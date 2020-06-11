@@ -7,14 +7,65 @@
 //
 
 import UIKit
+import Stripe
 
-class ViewController: UIViewController {
+let cardParams = STPCardParams()
+
+class ViewController: STPAddCardViewController, STPPaymentCardTextFieldDelegate{
+
+    let paymentCardTextField = STPPaymentCardTextField()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        self.navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Cancel", style: .plain, target: self, action: #selector(cancelButtonPressed))
     }
 
+        func paymentCardTextFieldDidChange(_ textField: STPPaymentCardTextField) {
+            cardParams.number = textField.cardNumber
+            cardParams.expMonth = textField.expirationMonth
+            cardParams.expYear = textField.expirationYear
+            cardParams.cvc = textField.cvc
 
+            if cardParams.number != nil && cardParams.expMonth != nil && cardParams.expYear != nil && cardParams.cvc != nil {
+                self.navigationItem.rightBarButtonItem?.isEnabled = true
+                self.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Done", style: .plain, target: self, action: #selector(processCard))
+            }
+        }
+
+    private func dismissView() {
+        _ = navigationController?.popViewController(animated: true)
+    }
+    
+    @objc private func cancelButtonPressed(){
+       dismissView()
+    }
+    
+    @objc private func processCard() {
+        STPAPIClient.shared().createToken(withCard: cardParams) { (token, error) in
+            if error == nil {
+                self.finishPayment(token: token!)
+                print("we have a token", token!)
+                
+            } else {
+                print("Error processing card token", error!.localizedDescription)
+            }
+        }
+    }
+    
+    private func finishPayment(token: STPToken) {
+        let totalPrice = 1999
+        
+        StripeClient.sharedClient.createAndConfirmPayment(token, amount: totalPrice) { (error) in
+            if error == nil {
+                print("payment successful")
+            } else {
+                print("error ", error!.localizedDescription)
+            }
+        }
+        
+        
+    }
+    
 }
+
 
